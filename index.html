@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Campeonato Free Fire - Inscrições</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #fff; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: auto; background: #222; padding: 30px; border-radius: 10px; }
+    input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; }
+    button { background: #e74c3c; color: white; font-weight: bold; cursor: pointer; }
+    button:hover { background: #c0392b; }
+    #app { display: none; }
+    .hidden { display: none; }
+    .player-form, .team-form { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Campeonato Free Fire</h1>
+  
+  <!-- Área de autenticação -->
+  <div id="auth">
+    <h2 id="form-title">Entrar</h2>
+    <input id="email" type="email" placeholder="Seu email" required/>
+    <input id="password" type="password" placeholder="Senha" required/>
+    <button id="submit-btn" onclick="handleAuth()">Entrar</button>
+    <p>Já tem conta? <a href="#" onclick="toggleForm()">Criar conta</a></p>
+    <p id="error" style="color: #e74c3c;"></p>
+  </div>
+
+  <!-- Área logada -->
+  <div id="app" class="hidden">
+    <h2>Bem-vindo, <span id="user-email"></span>!</h2>
+    <button onclick="logout()">Sair</button>
+
+    <div class="player-form">
+      <h3>Seu Perfil de Jogador (abra para contratações)</h3>
+      <input id="nome-real" placeholder="Nome verdadeiro"/>
+      <input id="nick-ff" placeholder="Nick no Free Fire"/>
+      <input type="file" id="foto-jogador" accept="image/*"/>
+      <label><input type="checkbox" id="aberto-contratacao"/> Aberto para contratações</label>
+      <button onclick="salvarJogador()">Salvar Perfil</button>
+    </div>
+
+    <div class="team-form hidden" id="team-section">
+      <h3>Cadastrar sua Equipe (só capitão)</h3>
+      <input id="nome-time" placeholder="Nome do Time"/>
+      <input type="file" id="logo-time" accept="image/*"/>
+      <input type="file" id="banner-time" accept="image/*"/>
+      <!-- Fotos dos 6 jogadores -->
+      <h4>Fotos dos 6 jogadores</h4>
+      <input type="file" id="foto1" accept="image/*"/>
+      <input type="file" id="foto2" accept="image/*"/>
+      <input type="file" id="foto3" accept="image/*"/>
+      <input type="file" id="foto4" accept="image/*"/>
+      <input type="file" id="foto5" accept="image/*"/>
+      <input type="file" id="foto6" accept="image/*"/>
+      <button onclick="salvarEquipe()">Inscrever Equipe</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
+
+  const firebaseConfig = {
+    // COLE AQUI O SEU CONFIG DO FIREBASE (apiKey, authDomain, etc.)
+    // Exemplo:
+    // apiKey: "SUA_API_KEY",
+    // authDomain: "seu-projeto.firebaseapp.com",
+    // projectId: "seu-projeto",
+    // storageBucket: "seu-projeto.appspot.com",
+    // messagingSenderId: "...",
+    // appId: "..."
+    firebase.auth().onAuthStateChanged(function(user) {
+    if (user) {
+        // User is signed in
+        var email = user.email;
+        // ...
+    } else {
+        // User is not signed in
+        // ...
+    }
+});
+firebase.auth().signInWithEmailAndPassword(email, password);
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  let currentUser = null;
+
+  onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+    if (user) {
+      document.getElementById('auth').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('user-email').textContent = user.email;
+      // Verifica se é capitão (pode vir de uma coleção "users")
+      // Por agora mostramos sempre a seção de time
+      document.getElementById('team-section').classList.remove('hidden');
+    } else {
+      document.getElementById('auth').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
+    }
+  });
+
+  window.toggleForm = () => {
+    const title = document.getElementById('form-title');
+    const btn = document.getElementById('submit-btn');
+    if (title.textContent === 'Entrar') {
+      title.textContent = 'Criar Conta';
+      btn.textContent = 'Cadastrar';
+    } else {
+      title.textContent = 'Entrar';
+      btn.textContent = 'Entrar';
+    }
+  };
+
+  window.handleAuth = () => {
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('password').value;
+    const title = document.getElementById('form-title').textContent;
+
+    if (title === 'Criar Conta') {
+      createUserWithEmailAndPassword(auth, email, pass)
+        .catch(err => document.getElementById('error').textContent = err.message);
+    } else {
+      signInWithEmailAndPassword(auth, email, pass)
+        .catch(err => document.getElementById('error').textContent = err.message);
+    }
+  };
+
+  window.logout = () => signOut(auth);
+
+  async function uploadFile(file, path) {
+    if (!file) return null;
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+  }
+
+  window.salvarJogador = async () => {
+    if (!currentUser) return alert("Faça login primeiro!");
+    const nome = document.getElementById('nome-real').value;
+    const nick = document.getElementById('nick-ff').value;
+    const aberto = document.getElementById('aberto-contratacao').checked;
+    const fotoFile = document.getElementById('foto-jogador').files[0];
+
+    let fotoUrl = null;
+    if (fotoFile) fotoUrl = await uploadFile(fotoFile, `jogadores/${currentUser.uid}/foto.jpg`);
+
+    await setDoc(doc(db, "jogadores", currentUser.uid), {
+      nome, nick, fotoUrl, abertoContratacao: aberto, email: currentUser.email
+    });
+    alert("Perfil de jogador salvo!");
+  };
+
+  window.salvarEquipe = async () => {
+    if (!currentUser) return alert("Faça login primeiro!");
+    const nomeTime = document.getElementById('nome-time').value;
+    const logoFile = document.getElementById('logo-time').files[0];
+    const bannerFile = document.getElementById('banner-time').files[0];
+
+    let logoUrl = await uploadFile(logoFile, `equipes/${currentUser.uid}/logo.png`);
+    let bannerUrl = await uploadFile(bannerFile, `equipes/${currentUser.uid}/banner.png`);
+
+    let fotos = [];
+    for (let i = 1; i <= 6; i++) {
+      const file = document.getElementById(`foto${i}`).files[0];
+      if (file) {
+        const url = await uploadFile(file, `equipes/${currentUser.uid}/jogador${i}.jpg`);
+        fotos.push(url);
+      }
+    }
+
+    await setDoc(doc(db, "equipes", currentUser.uid), {
+      nomeTime, logoUrl, bannerUrl, fotosJogadores: fotos, capitão: currentUser.email, timestamp: new Date()
+    });
+    alert("Equipe inscrita com sucesso!");
+  };
+</script>
+</body>
+</html>
