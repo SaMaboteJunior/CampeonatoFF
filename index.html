@@ -62,34 +62,14 @@
   </div>
 </div>
 
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
+<!-- Supabase Client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  const firebaseConfig = {
-    // COLE AQUI O SEU CONFIG DO FIREBASE (apiKey, authDomain, etc.)
-    // Exemplo:
-    // apiKey: "SUA_API_KEY",
-    // authDomain: "seu-projeto.firebaseapp.com",
-    // projectId: "seu-projeto",
-    // storageBucket: "seu-projeto.appspot.com",
-    // messagingSenderId: "...",
-    // appId: "..."
-    firebase.auth().onAuthStateChanged(function(user) {
-    if (user) {
-        // User is signed in
-        var email = user.email;
-        // ...
-    } else {
-        // User is not signed in
-        // ...
-    }
-});
-firebase.auth().signInWithEmailAndPassword(email, password);
-  };
+<script>
+  const supabaseUrl = 'https://SUA-URL.supabase.co';          // cola a tua URL
+  const supabaseKey = 'SUA-ANON-KEY';                         // cola a anon key
+  const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
+
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -98,20 +78,43 @@ firebase.auth().signInWithEmailAndPassword(email, password);
 
   let currentUser = null;
 
-  onAuthStateChanged(auth, (user) => {
-    currentUser = user;
-    if (user) {
-      document.getElementById('auth').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      document.getElementById('user-email').textContent = user.email;
-      // Verifica se é capitão (pode vir de uma coleção "users")
-      // Por agora mostramos sempre a seção de time
-      document.getElementById('team-section').classList.remove('hidden');
-    } else {
-      document.getElementById('auth').classList.remove('hidden');
-      document.getElementById('app').classList.add('hidden');
-    }
-  });
+  // No lugar do onAuthStateChanged
+supabase.auth.onAuthStateChange((event, session) => {
+  currentUser = session?.user ?? null;
+  if (currentUser) {
+    document.getElementById('auth').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('user-email').textContent = currentUser.email;
+    document.getElementById('team-section').classList.remove('hidden');
+  } else {
+    document.getElementById('auth').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+});
+
+// Função de login/cadastro (handleAuth)
+window.handleAuth = async () => {
+  const email = document.getElementById('email').value;
+  const pass = document.getElementById('password').value;
+  const isSignup = document.getElementById('form-title').textContent === 'Criar Conta';
+
+  let result;
+  if (isSignup) {
+    result = await supabase.auth.signUp({ email, password: pass });
+  } else {
+    result = await supabase.auth.signInWithPassword({ email, password: pass });
+  }
+
+  if (result.error) {
+    document.getElementById('error').textContent = result.error.message;
+  } else {
+    // Sucesso → onAuthStateChange cuida do resto
+  }
+};
+
+window.logout = async () => {
+  await supabase.auth.signOut();
+};
 
   window.toggleForm = () => {
     const title = document.getElementById('form-title');
@@ -148,21 +151,34 @@ firebase.auth().signInWithEmailAndPassword(email, password);
     return getDownloadURL(storageRef);
   }
 
-  window.salvarJogador = async () => {
-    if (!currentUser) return alert("Faça login primeiro!");
-    const nome = document.getElementById('nome-real').value;
-    const nick = document.getElementById('nick-ff').value;
-    const aberto = document.getElementById('aberto-contratacao').checked;
-    const fotoFile = document.getElementById('foto-jogador').files[0];
+ window.salvarJogador = async () => {
+  if (!currentUser) return alert("Faça login primeiro!");
 
-    let fotoUrl = null;
-    if (fotoFile) fotoUrl = await uploadFile(fotoFile, `jogadores/${currentUser.uid}/foto.jpg`);
+  const nome = document.getElementById('nome-real').value;
+  const nick = document.getElementById('nick-ff').value;
+  const aberto = document.getElementById('aberto-contratacao').checked;
+  const fotoFile = document.getElementById('foto-jogador').files[0];
 
-    await setDoc(doc(db, "jogadores", currentUser.uid), {
-      nome, nick, fotoUrl, abertoContratacao: aberto, email: currentUser.email
+  let fotoUrl = null;
+  if (fotoFile) {
+    const { data, error } = await supabase.storage
+      .from('fotos')                          // nome do bucket
+      .upload(`jogadores/${currentUser.id}/foto.jpg`, fotoFile, { upsert: true });
+
+    if (error) return alert("Erro no upload: " + error.message);
+    fotoUrl = `${supabaseUrl}/storage/v1/object/public/fotos/${data.path}`;
+  }
+
+  const { error } = await supabase
+    .from('jogadores')
+    .upsert({
+      id: currentUser.id,
+      nome, nick, foto_url: fotoUrl, aberto_contratacao: aberto, email: currentUser.email
     });
-    alert("Perfil de jogador salvo!");
-  };
+
+  if (error) alert("Erro ao salvar: " + error.message);
+  else alert("Perfil salvo!");
+};
 
   window.salvarEquipe = async () => {
     if (!currentUser) return alert("Faça login primeiro!");
