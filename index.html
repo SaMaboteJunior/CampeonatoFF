@@ -1,224 +1,36 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Campeonato Free Fire - Inscrições</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #111; color: #fff; margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: auto; background: #222; padding: 30px; border-radius: 10px; }
-    input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; }
-    button { background: #e74c3c; color: white; font-weight: bold; cursor: pointer; }
-    button:hover { background: #c0392b; }
-    #app { display: none; }
-    .hidden { display: none; }
-    .player-form, .team-form { margin-top: 20px; }
-  </style>
+  <meta charset="UTF-8">
+  <title>BKG Login</title>
+  <link rel="stylesheet" href="style.css/style.css">
 </head>
 <body>
 
 <div class="container">
-  <h1>🏆 Campeonato Free Fire - Inscrições</h1>
   
-  <!-- LOGIN / CADASTRO -->
-  <div id="auth">
-    <h2 id="form-title">Entrar</h2>
-    <input id="email" type="email" placeholder="Seu email" required/>
-    <input id="password" type="password" placeholder="Senha (mín. 6 caracteres)" required/>
-    <button id="submit-btn" onclick="handleAuth()">Entrar</button>
-    <p>Já tem conta? <a href="#" onclick="toggleForm()">Criar conta</a></p>
-    <p id="error" style="color: #e74c3c; font-size: 14px;"></p>
+  <div class="card">
+    
+    <img src="logo.png" class="logo">
+
+    <h2 id="title">Login</h2>
+
+    <input type="email" id="email" placeholder="User / Gmail">
+    <input type="password" id="password" placeholder="Senha">
+
+    <button onclick="login()">ENTRAR</button>
+
+    <p class="switch">
+      Não tem conta? 
+      <span onclick="toggleMode()">Criar conta</span>
+    </p>
+
   </div>
 
-  <!-- ÁREA LOGADA -->
-  <div id="app" class="hidden">
-    <h2>Bem-vindo, <span id="user-email"></span>! 🔥</h2>
-    <button onclick="logout()">Sair</button>
-
-    <!-- FORMULÁRIO DE JOGADOR -->
-    <div class="player-form">
-      <h3>👤 Seu Perfil de Jogador (para contratações)</h3>
-      <input id="nome-real" placeholder="Nome verdadeiro"/>
-      <input id="nick-ff" placeholder="Nick no Free Fire"/>
-      <input type="file" id="foto-jogador" accept="image/*"/>
-      <label><input type="checkbox" id="aberto-contratacao" checked/> Aberto para contratações</label>
-      <button onclick="salvarJogador()">Salvar Perfil de Jogador</button>
-    </div>
-
-    <!-- FORMULÁRIO DE EQUIPE (Capitão) -->
-    <div class="team-form">
-      <h3>👥 Cadastrar sua Equipe</h3>
-      <input id="nome-time" placeholder="Nome do Time"/>
-      <input type="file" id="logo-time" accept="image/*"/> <small>Logo do time</small>
-      <input type="file" id="banner-time" accept="image/*"/> <small>Banner do time</small>
-      
-      <h4>Fotos dos 6 jogadores</h4>
-      <input type="file" id="foto1" accept="image/*"/>
-      <input type="file" id="foto2" accept="image/*"/>
-      <input type="file" id="foto3" accept="image/*"/>
-      <input type="file" id="foto4" accept="image/*"/>
-      <input type="file" id="foto5" accept="image/*"/>
-      <input type="file" id="foto6" accept="image/*"/>
-      
-      <button onclick="salvarEquipe()">Inscrever Equipe</button>
-    </div>
-  </div>
 </div>
 
-<!-- ===================== SUPABASE CDN ===================== -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="app.js/app.js"></script>
 
-<script>
-  // ==================== CONFIGURAÇÃO (COLE AQUI) ====================
-  const supabaseUrl  = 'https://rkdrhnzvnttegnmkevlf.supabase.co';     // ← Troque
-  const supabaseKey  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrZHJobnp2bnR0ZWdubWtldmxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODc2OTQsImV4cCI6MjA4OTM2MzY5NH0.unmMt3qrU3PL4tZYePpkGIP-OMKnuxNI0IAqRyWFt5U';     // ← Troque (anon public key)
-
-  const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
-
-  let currentUser = null;
-(async () => {
-  const { data } = await supabase.auth.getSession();
-  currentUser = data.session?.user ?? null;
-
-  if (currentUser) {
-    document.getElementById('auth').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    document.getElementById('user-email').textContent = currentUser.email;
-  }
-})();
-  // ==================== AUTH STATE ====================
-  supabase.auth.onAuthStateChange((event, session) => {
-    currentUser = session?.user ?? null;
-    const authDiv = document.getElementById('auth');
-    const appDiv  = document.getElementById('app');
-
-    if (currentUser) {
-      authDiv.classList.add('hidden');
-      appDiv.classList.remove('hidden');
-      document.getElementById('user-email').textContent = currentUser.email;
-    } else {
-      authDiv.classList.remove('hidden');
-      appDiv.classList.add('hidden');
-    }
-  });
-
-  // ==================== FUNÇÕES BÁSICAS ====================
-  window.toggleForm = () => {
-    const title = document.getElementById('form-title');
-    const btn = document.getElementById('submit-btn');
-    if (title.textContent === 'Entrar') {
-      title.textContent = 'Criar Conta';
-      btn.textContent = 'Cadastrar';
-    } else {
-      title.textContent = 'Entrar';
-      btn.textContent = 'Entrar';
-    }
-  };
-
-  window.handleAuth = async () => {
-    const email = document.getElementById('email').value;
-    const pass  = document.getElementById('password').value;
-    const isSignup = document.getElementById('form-title').textContent === 'Criar Conta';
-    const errorEl = document.getElementById('error');
-
-    errorEl.textContent = '';
-
-    let result;
-    if (isSignup) {
-      result = await supabase.auth.signUp({ email, password: pass });
-    } else {
-      result = await supabase.auth.signInWithPassword({ email, password: pass });
-    }
-
-    if (result.error) {
-      errorEl.textContent = result.error.message;
-    }
-  };
-
-  window.logout = async () => {
-    await supabase.auth.signOut();
-  };
-
-  // ==================== UPLOAD HELPER ====================
-  async function uploadFile(file, path) {
-    if (!file) return null;
-    const { data, error } = await supabase.storage
-      .from('uploads')
-      .upload(path, file, { upsert: true });
-
-    if (error) {
-      console.error(error);
-      alert("Erro no upload: " + error.message);
-      return null;
-    }
-    return `${supabaseUrl}/storage/v1/object/public/uploads/${path}`;
-  }
-
-  // ==================== SALVAR JOGADOR ====================
-  window.salvarJogador = async () => {
-    if (!currentUser) return alert("Faça login primeiro!");
-
-    const nome = document.getElementById('nome-real').value;
-    const nick = document.getElementById('nick-ff').value;
-    const aberto = document.getElementById('aberto-contratacao').checked;
-    const fotoFile = document.getElementById('foto-jogador').files[0];
-
-    let fotoUrl = null;
-    if (fotoFile) {
-      fotoUrl = await uploadFile(fotoFile, `jogadores/${currentUser.id}/foto.jpg`);
-    }
-
-    const { error } = await supabase
-      .from('jogadores')
-      .upsert({
-        id: currentUser.id,
-        nome,
-        nick,
-        foto_url: fotoUrl,
-        aberto_contratacao: aberto,
-        email: currentUser.email
-      });
-
-    if (error) alert("Erro ao salvar jogador: " + error.message);
-    else alert("✅ Perfil de jogador salvo com sucesso!");
-  };
-
-  // ==================== SALVAR EQUIPE ====================
-  window.salvarEquipe = async () => {
-    if (!currentUser) return alert("Faça login primeiro!");
-
-    const nomeTime = document.getElementById('nome-time').value;
-    const logoFile = document.getElementById('logo-time').files[0];
-    const bannerFile = document.getElementById('banner-time').files[0];
-
-    let logoUrl = null;
-    let bannerUrl = null;
-    if (logoFile)   logoUrl   = await uploadFile(logoFile,   `equipes/${currentUser.id}/logo.png`);
-    if (bannerFile) bannerUrl = await uploadFile(bannerFile, `equipes/${currentUser.id}/banner.png`);
-
-    let fotosUrls = [];
-    for (let i = 1; i <= 6; i++) {
-      const file = document.getElementById(`foto${i}`).files[0];
-      if (file) {
-        const url = await uploadFile(file, `equipes/${currentUser.id}/jogador${i}.jpg`);
-        if (url) fotosUrls.push(url);
-      }
-    }
-
-    const { error } = await supabase
-      .from('equipes')
-      .upsert({
-        id: currentUser.id,
-        nome_time: nomeTime,
-        logo_url: logoUrl,
-        banner_url: bannerUrl,
-        fotos_jogadores: fotosUrls,
-        capitao_email: currentUser.email
-      });
-
-    if (error) alert("Erro ao salvar equipe: " + error.message);
-    else alert("✅ Equipe inscrita com sucesso!");
-  };
-</script>
 </body>
 </html>
